@@ -1,0 +1,30 @@
+# Load required libraries
+library(tidyverse)   
+library(reshape2)    
+library(ggplot2)     
+library(tm)          
+library(wordcloud)   
+library(RColorBrewer)
+library(syuzhet)     
+library(tidytext)    
+library(textdata)    
+
+setwd("~/Documents/r_patient/data")  
+
+# Load the dataset
+file_path <- "Consumer_Complaints.csv"
+df <- read_csv(file_path, show_col_types = FALSE)
+ 
+ 
+ Get min/max complaints
+min_complaint <- min(top_complaints$n)
+max_complaint <- max(top_complaints$n)
+
+ggplot(top_complaints, aes(x = reorder(Issue, -n), y = n, fill = Issue)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Top 10 Consumer Complaints",
+       x = "Complaint Issue", 
+       y = "Count",
+       subtitle = paste("Min:", min_complaint, "| Max:", max_complaint)) +
+  theme_minimal()
