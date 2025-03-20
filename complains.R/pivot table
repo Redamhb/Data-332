@@ -1,0 +1,25 @@
+# Load required libraries
+library(tidyverse)   
+library(reshape2)    
+library(ggplot2)     
+library(tm)          
+library(wordcloud)   
+library(RColorBrewer)
+library(syuzhet)     
+library(tidytext)    
+library(textdata)    
+
+setwd("~/Documents/r_patient/data")  
+
+# Load the dataset
+file_path <- "Consumer_Complaints.csv"
+df <- read_csv(file_path, show_col_types = FALSE)
+# Pivot Table - Complaints by Product & Company
+
+
+pivot_table <- df_clean %>%
+  count(Product, Company) %>%
+  dcast(Product ~ Company, value.var = "n", fill = 0)
+
+# Print first few rows of the pivot table
+print(head(pivot_table))
