@@ -1,0 +1,22 @@
+# Load required libraries
+library(tidyverse)   
+library(reshape2)    
+library(ggplot2)     
+library(tm)          
+library(wordcloud)   
+library(RColorBrewer)
+library(syuzhet)     
+library(tidytext)    
+library(textdata)    
+
+setwd("~/Documents/r_patient/data")  
+
+# Load the dataset
+file_path <- "Consumer_Complaints.csv"
+df <- read_csv(file_path, show_col_types = FALSE)
+
+# Generate the word cloud
+set.seed(1234)
+wordcloud(words = df_words$word, freq = df_words$freq, min.freq = 5,
+          max.words = 100, random.order = FALSE, rot.per = 0.3,
+          colors = brewer.pal(8, "Dark2"))
