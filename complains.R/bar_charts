@@ -1,0 +1,79 @@
+# Load required libraries
+library(tidyverse)   
+library(reshape2)    
+library(ggplot2)     
+library(tm)          
+library(wordcloud)   
+library(RColorBrewer)
+library(syuzhet)     
+library(tidytext)    
+library(textdata)    
+
+setwd("~/Documents/r_patient/data")  
+
+# Load the dataset
+file_path <- "Consumer_Complaints.csv"
+df <- read_csv(file_path, show_col_types = FALSE)
+
+# 5. Sentiment Analysis - Bing & NRC
+
+df_tokens <- df_clean %>%
+  unnest_tokens(word, `Consumer complaint narrative`) %>%
+  anti_join(stop_words)
+
+# Bing Sentiment Analysis
+bing_sentiment <- df_tokens %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(sentiment, sort = TRUE)
+
+ggplot(bing_sentiment, aes(x = sentiment, y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Bing Sentiment Analysis of Complaints",
+       x = "Sentiment",
+       y = "Count") +
+  theme_minimal()
+
+# NRC Sentiment Analysis
+nrc_sentiment <- df_tokens %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(sentiment, sort = TRUE)
+
+ggplot(nrc_sentiment, aes(x = reorder(sentiment, -n), y = n, fill = sentiment)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "NRC Sentiment Analysis of Complaints",
+       x = "Sentiment",
+       y = "Count") +
+  theme_minimal()
+
+# 1. Bar Chart - Top 10 Complaints
+
+top_complaints <- df_clean %>%
+  count(Issue, sort = TRUE) %>%
+  top_n(10, n)
+
+# 2. Bar Chart - Complaint Distribution by Product (Replacing Pie Chart)
+
+product_counts <- df_clean %>%
+  count(Product, sort = TRUE) %>%
+  top_n(5, n)
+
+ggplot(product_counts, aes(x = reorder(Product, -n), y = n, fill = Product)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Complaint Distribution by Product", x = "Product", y = "Number of Complaints") +
+  theme_minimal()
+
+
+# 3. Histogram - Complaint Frequency by Company
+
+company_complaints <- df_clean %>%
+  count(Company, sort = TRUE) %>%
+  top_n(15, n)
+
+ggplot(company_complaints, aes(x = reorder(Company, -n), y = n, fill = Company)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Top 15 Companies with Most Complaints", x = "Company", y = "Number of Complaints") +
+  theme_minimal()
+
+
