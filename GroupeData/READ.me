@@ -1,0 +1,132 @@
+library(shiny)
+library(ggplot2)
+library(DT)
+library(readxl)
+library(rsconnect)
+
+# Load and clean your group's file
+group_data <- read_excel("Data_Counting_Cars.xlsx")
+colnames(group_data) <- str_trim(make.names(colnames(group_data)))
+speed_col <- grep("Speed", colnames(group_data), value = TRUE)[1]
+
+df_group <- group_data %>%
+  rename(Speed = !!speed_col) %>%
+  mutate(
+    Date = NA,
+    Time = NA,
+    Color = NA,
+    Type = as.character(if ("Type" %in% colnames(.)) Type else NA),
+    Weather = if ("Weather" %in% colnames(.)) Weather else NA,
+    Recorder = if ("Recorder" %in% colnames(.)) Recorder else NA,
+    SlowedDown = as.character(NA)
+  ) %>%
+  select(Date, Time, Speed, Color, Type, Weather, Recorder, SlowedDown)
+
+# File 1: speed_counting_cars1.xlsx
+file1 <- read_excel("speed_counting_cars1.xlsx")
+df1 <- file1 %>%
+  rename(Speed = init_speed,
+         Type = vehicle_type,
+         Weather = weather,
+         Recorder = recorder,
+         SlowedDown = flashing) %>%
+  mutate(
+    Date = NA,
+    Time = NA,
+    Color = NA,
+    Type = as.character(Type),
+    SlowedDown = as.character(SlowedDown)
+  ) %>%
+  select(Date, Time, Speed, Color, Type, Weather, Recorder, SlowedDown)
+
+# File 2: Car_Data_Collection.xlsx
+file2 <- read_excel("Car_Data_Collection.xlsx")
+df2 <- file2 %>%
+  rename(Speed = Speed,
+         Type = `Type of Car`,
+         Weather = Weather,
+         Recorder = `Collector Name`,
+         Color = Color,
+         Time = `Time of the day`,
+         Date = Date) %>%
+  mutate(
+    Type = as.character(Type),
+    SlowedDown = as.character(NA)
+  ) %>%
+  select(Date, Time, Speed, Color, Type, Weather, Recorder, SlowedDown)
+
+# File 3: counting_cars_final.xlsx
+file3 <- read_excel("counting_cars_final.xlsx")
+df3 <- file3 %>%
+  rename(Speed = mph,
+         Type = vehicle_style,
+         Recorder = student,
+         SlowedDown = `if_they_slow_down_(YES/ NO)`,
+         Time = `hr:min`,
+         Date = date) %>%
+  mutate(
+    Type = as.character(Type),
+    Color = NA,
+    Weather = NA,
+    SlowedDown = as.character(SlowedDown)
+  ) %>%
+  select(Date, Time, Speed, Color, Type, Weather, Recorder, SlowedDown)
+
+# File 4: Counting_Cars.xlsx
+file4 <- read_excel("Counting_Cars.xlsx")
+df4 <- file4 %>%
+  rename(Speed = Initial_Read,
+         Type = Type_of_Car,
+         Weather = Weather,
+         Recorder = Name,
+         Date = Date_Recorded,
+         Time = Time_Recorded) %>%
+  mutate(
+    Type = as.character(Type),
+    Color = NA,
+    SlowedDown = as.character(NA)
+  ) %>%
+  select(Date, Time, Speed, Color, Type, Weather, Recorder, SlowedDown)
+
+# Combine all datasets
+dataset <- bind_rows(df_group, df1, df2, df3, df4)
+colnames(dataset) <- make.names(colnames(dataset))
+column_names <- colnames(dataset)
+
+
+ui <- fluidPage(
+  titlePanel("Full Class Car Data"),
+  fluidRow(
+    column(3,
+           selectInput("X", "X Axis", choices = column_names, selected = column_names[1]),
+           selectInput("Y", "Y Axis", choices = column_names, selected = column_names[3])
+    ),
+    column(6,
+           plotOutput("plot")
+    )
+  ),
+  fluidRow(
+    column(12,
+           DT::dataTableOutput("table")
+    )
+  )
+)
+
+
+
+server <- function(input, output) {
+  output$plot <- renderPlot({
+    ggplot(dataset, aes_string(x = input$X, y = input$Y, fill = input$X)) +
+      geom_col() +
+      theme_minimal() +
+      labs(x = input$X, y = input$Y, title = paste(input$Y, "vs", input$X)) +
+      guides(fill = guide_legend(title = input$X))
+  })
+  
+  output$table <- DT::renderDataTable({
+    dataset[, c(input$X, input$Y)]
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
