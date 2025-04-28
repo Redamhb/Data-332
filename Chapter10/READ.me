@@ -1,0 +1,151 @@
+num <- 1000000000
+print(num)
+## 1000000000
+
+class(num) <- c("POSIXct", "POSIXt")
+print(num)
+## "2001-09-08 19:46:40 CST"
+
+one_play <- play()
+one_play
+## 0
+
+attributes(one_play)
+## NULL
+
+attr(one_play, "symbols") <- c("B", "0", "B")
+
+attributes(one_play)
+## $symbols
+## [1] "B" "0" "B"
+
+attr(one_play, "symbols")
+## "B" "0" "B"
+
+one_play
+## [1] 0
+## attr(,"symbols")
+## [1] "B" "0" "B"
+
+one_play + 1
+##  1
+## attr(,"symbols")
+##  "B" "0" "B"
+
+play <- function() {
+  symbols <- get_symbols()
+  prize <- score(symbols)
+  attr(prize, "symbols") <- symbols
+  prize
+}
+
+print(pi)
+## 3.141593
+
+pi
+## 3.141593
+
+
+print(head(deck))
+##  face   suit value
+##  king spades    13
+## queen spades    12
+##  jack spades    11
+##   ten spades    10
+##  nine spades     9
+## eight spades     8
+
+head(deck)
+##  face   suit value
+##  king spades    13
+## queen spades    12
+##  jack spades    11
+##   ten spades    10
+##  nine spades     9
+## eight spades     8
+
+
+print(play())
+##  5
+## attr(,"symbols")
+##  "B"  "BB" "B" 
+
+play()
+##  5
+## attr(,"symbols")
+##  "B"  "BB" "B" 
+
+num <- 1000000000
+print(num)
+## 1000000000
+
+  class(num) <- c("POSIXct", "POSIXt")
+print(num)
+## "2001-09-08 19:46:40 CST"
+
+class(one_play) <- "slots"
+
+args(print)
+## function (x, ...) 
+## NULL
+
+print.slots <- function(x, ...) {
+  cat("I'm using the print.slots method")
+}
+
+print(one_play)
+## I'm using the print.slots method
+
+one_play
+## I'm using the print.slots method
+
+rm(print.slots)
+
+now <- Sys.time()
+attributes(now)
+## $class
+## [1] "POSIXct" "POSIXt" 
+
+print.slots <- function(x, ...) {
+  slot_display(x)
+}
+
+play <- function() {
+  symbols <- get_symbols()
+  structure(score(symbols), symbols = symbols, class = "slots")
+}
+
+methods(class = "factor")
+##  [1] [.factor             [[.factor           
+##  [3] [[<-.factor          [<-.factor          
+##  [5] all.equal.factor     as.character.factor 
+##  [7] as.data.frame.factor as.Date.factor      
+##  [9] as.list.factor       as.logical.factor   
+## [11] as.POSIXlt.factor    as.vector.factor    
+## [13] droplevels.factor    format.factor       
+## [15] is.na<-.factor       length<-.factor     
+## [17] levels<-.factor      Math.factor         
+## [19] Ops.factor           plot.factor*        
+## [21] print.factor         relevel.factor*     
+## [23] relist.factor*       rep.factor          
+## [25] summary.factor       Summary.factor      
+## [27] xtfrm.factor        
+## 
+##    Nonvisible functions are asterisked
+
+play1 <- play()
+play1
+## B BBB BBB
+## $5
+
+play2 <- play()
+play2
+## 0 B 0
+## $0
+
+c(play1, play2)
+## [1] 5 0
+
+play1[1]
+## [1] 5
+
