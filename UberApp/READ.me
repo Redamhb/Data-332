@@ -1,0 +1,207 @@
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(readr)
+library(leaflet)
+library(leaflet.extras)
+library(caret)
+library(reshape2)
+
+# Load and prepare data (Apr–Sep)
+load_data <- function() {
+  files <- c("uber-raw-data-apr14.csv", "uber-raw-data-may14.csv", "uber-raw-data-jun14.csv",
+             "uber-raw-data-jul14.csv", "uber-raw-data-aug14.csv", "uber-raw-data-sep14.csv")
+  
+  # Try to load all files safely
+  data_list <- lapply(files, function(f) {
+    if (file.exists(f)) {
+      read.csv(f)
+    } else {
+      stop(paste("Missing file:", f))
+    }
+  })
+  
+  uber_data <- bind_rows(data_list)
+  
+  # Standardize column names
+  names(uber_data) <- make.names(names(uber_data))
+  
+  # Rename latitude and longitude if necessary
+  if (!("Lat" %in% names(uber_data)) && "Lat" %in% names(uber_data)) {
+    # Already correctly named
+  } else if ("latitude" %in% names(uber_data) && "longitude" %in% names(uber_data)) {
+    uber_data <- uber_data %>% rename(Lat = latitude, Lon = longitude)
+  } else if (!("Lat" %in% names(uber_data)) || !("Lon" %in% names(uber_data))) {
+    stop("Missing Lat or Lon columns.")
+  }
+  
+  uber_data$Date.Time <- mdy_hms(uber_data$Date.Time)
+  uber_data <- uber_data %>%
+    mutate(
+      Date = as.Date(Date.Time),
+      Hour = hour(Date.Time),
+      Day = day(Date.Time),
+      Weekday = wday(Date.Time, label = TRUE),
+      Week = week(Date.Time),
+      Month = month(Date.Time, label = TRUE),
+      MonthNum = month(Date.Time)
+    )
+  
+  return(uber_data)
+}
+
+ui <- fluidPage(
+  titlePanel("Uber NYC Trips (April–September 2014) - Reda Mahboub"),
+  tabsetPanel(
+    tabPanel("Pivot Table - Trips by Hour", tableOutput("pivotHour")),
+    tabPanel("Trips by Hour and Month", plotOutput("tripsByHourMonth")),
+    tabPanel("Trips Every Hour", plotOutput("tripsEveryHour")),
+    tabPanel("Trips by Day of Month", plotOutput("tripsByDay")),
+    tabPanel("Trips Every Day Table", tableOutput("tripsByDayTable")),
+    tabPanel("Trips by Day and Month", plotOutput("tripsByWeekdayMonth")),
+    tabPanel("Trips by Month", plotOutput("tripsByMonth")),
+    tabPanel("Trips by Base and Month", plotOutput("tripsByBaseMonth")),
+    tabPanel("Heatmaps",
+             fluidRow(
+               column(6, plotOutput("heat_hour_day")),
+               column(6, plotOutput("heat_month_day"))
+             ),
+             fluidRow(
+               column(6, plotOutput("heat_month_week")),
+               column(6, plotOutput("heat_base_weekday"))
+             )
+    ),
+    tabPanel("Leaflet Map", leafletOutput("uberMap")),
+    tabPanel("Prediction Model", verbatimTextOutput("modelResults"))
+  )
+)
+
+server <- function(input, output) {
+  uber_data <- load_data()
+  
+  output$pivotHour <- renderTable({
+    uber_data %>% count(Hour) %>% arrange(Hour)
+  })
+  
+  output$tripsByHourMonth <- renderPlot({
+    df <- uber_data %>% count(Hour, Month)
+    ggplot(df, aes(x = Hour, y = n, fill = Month)) +
+      geom_col(position = "dodge") +
+      labs(title = "Trips by Hour and Month", y = "Trips") +
+      theme_minimal()
+  })
+  
+  output$tripsEveryHour <- renderPlot({
+    df <- uber_data %>% count(Hour)
+    ggplot(df, aes(x = factor(Hour), y = n)) +
+      geom_col(fill = "orange") +
+      labs(title = "Trips Every Hour", x = "Hour", y = "Trips") +
+      theme_minimal()
+  })
+  
+  output$tripsByDay <- renderPlot({
+    df <- uber_data %>% count(Day)
+    ggplot(df, aes(x = Day, y = n)) +
+      geom_col(fill = "coral") +
+      labs(title = "Trips by Day of Month", y = "Trips", x = "Day") +
+      theme_minimal()
+  })
+  
+  output$tripsByDayTable <- renderTable({
+    uber_data %>% count(Day) %>% arrange(Day)
+  })
+  
+  output$tripsByWeekdayMonth <- renderPlot({
+    df <- uber_data %>% count(Weekday, Month)
+    ggplot(df, aes(x = Weekday, y = n, fill = Month)) +
+      geom_col(position = "dodge") +
+      labs(title = "Trips by Day and Month", y = "Trips", x = "Weekday") +
+      theme_minimal()
+  })
+  
+  output$tripsByMonth <- renderPlot({
+    df <- uber_data %>% count(Month)
+    ggplot(df, aes(x = Month, y = n)) +
+      geom_col(fill = "darkgreen") +
+      labs(title = "Trips by Month", y = "Trips") +
+      theme_minimal()
+  })
+  
+  output$tripsByBaseMonth <- renderPlot({
+    df <- uber_data %>% count(Base, Month)
+    ggplot(df, aes(x = Base, y = n, fill = Month)) +
+      geom_col(position = "dodge") +
+      labs(title = "Trips by Base and Month", y = "Trips", x = "Base") +
+      theme_minimal()
+  })
+  
+  output$heat_hour_day <- renderPlot({
+    df <- uber_data %>% count(Weekday, Hour)
+    ggplot(df, aes(x = Hour, y = Weekday, fill = n)) +
+      geom_tile() +
+      labs(title = "Heatmap: Hour vs Day", fill = "Trips") +
+      theme_minimal()
+  })
+  
+  output$heat_month_day <- renderPlot({
+    df <- uber_data %>% count(Month, Day)
+    ggplot(df, aes(x = Day, y = Month, fill = n)) +
+      geom_tile() +
+      labs(title = "Heatmap: Month vs Day", fill = "Trips") +
+      theme_minimal()
+  })
+  
+  output$heat_month_week <- renderPlot({
+    df <- uber_data %>% count(Month, Week)
+    ggplot(df, aes(x = Week, y = Month, fill = n)) +
+      geom_tile() +
+      labs(title = "Heatmap: Month vs Week", fill = "Trips") +
+      theme_minimal()
+  })
+  
+  output$heat_base_weekday <- renderPlot({
+    df <- uber_data %>% count(Base, Weekday)
+    ggplot(df, aes(x = Weekday, y = Base, fill = n)) +
+      geom_tile() +
+      labs(title = "Heatmap: Base vs Weekday", fill = "Trips") +
+      theme_minimal()
+  })
+  
+  output$uberMap <- renderLeaflet({
+    leaflet(data = uber_data[1:1000, ]) %>%
+      addProviderTiles(providers$OpenStreetMap) %>%
+      addCircleMarkers(
+        lng = ~Lon, lat = ~Lat,
+        radius = 2, color = "blue", opacity = 0.6,
+        clusterOptions = markerClusterOptions()
+      ) %>%
+      addResetMapButton() %>%
+      addMeasure(
+        position = 'bottomleft',
+        primaryLengthUnit = 'meters',
+        primaryAreaUnit = 'sqmeters'
+      ) %>%
+      addControl("<P><b>Uber NYC Map</b><br/>Trip sample for Apr–Sep 2014</P>",
+                 position = 'topright')
+  })
+  
+  output$modelResults <- renderPrint({
+    model_data <- uber_data %>%
+      select(Hour, Base, Month, Weekday) %>%
+      na.omit() %>%
+      mutate(across(everything(), as.factor))
+    
+    set.seed(123)
+    train_index <- createDataPartition(model_data$Hour, p = 0.7, list = FALSE)
+    train <- model_data[train_index, ]
+    test <- model_data[-train_index, ]
+    
+    model <- train(Hour ~ ., data = train, method = "rpart")
+    preds <- predict(model, test)
+    
+    confusionMatrix(preds, test$Hour)
+  })
+}
+
+shinyApp(ui = ui, server = server)
